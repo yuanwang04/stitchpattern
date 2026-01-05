@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StitchGrid - Pattern Maker</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .canvas-container::-webkit-scrollbar {
+            width: 12px;
+            height: 12px;
+        }
+        .canvas-container::-webkit-scrollbar-track {
+            background: #f1f5f9;
+            border-radius: 4px;
+        }
+        .canvas-container::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+            border: 2px solid #f1f5f9;
+        }
+        .canvas-container::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        
+        .checkerboard-bg {
+            background-color: #ffffff;
+            background-image: 
+                linear-gradient(45deg, #f0f0f0 25%, transparent 25%), 
+                linear-gradient(-45deg, #f0f0f0 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #f0f0f0 75%), 
+                linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 h-screen flex flex-col font-sans overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shrink-0 shadow-sm z-30 relative">
+        <div class="flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-600"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+            <h1 class="text-xl font-bold text-slate-800">StitchGrid</h1>
+        </div>
+        <div class="flex gap-2">
+             <button id="exportSectionsBtn" class="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M3 9h18"/></svg>
+                Export Sections
+            </button>
+             <button id="exportBtn" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+                Export Full
+            </button>
+        </div>
+    </header>
+
+    <div class="flex flex-1 overflow-hidden relative z-0">
+        
+        <!-- Sidebar Controls -->
+        <aside class="w-80 bg-white border-r border-slate-200 flex flex-col overflow-y-auto shrink-0 z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
+            <div class="p-5 space-y-6">
+                
+                <!-- Upload Section -->
+                <div class="space-y-3">
+                    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">1. Source Image</h2>
+                    <div class="relative group">
+                        <label for="fileInput" class="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer bg-slate-50 hover:bg-slate-100 hover:border-indigo-400 transition-all">
+                            <div class="flex flex-col items-center justify-center pt-2 pb-3">
+                                <svg class="w-6 h-6 mb-1 text-slate-400 group-hover:text-indigo-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/></svg>
+                                <p class="text-xs text-slate-500"><span class="font-semibold">Upload</span> image</p>
+                            </div>
+                            <input id="fileInput" type="file" class="hidden" accept="image/*" />
+                        </label>
+                    </div>
+                    <div id="imagePreviewContainer" class="hidden">
+                        <img id="sourcePreview" class="w-full h-auto rounded-md border border-slate-200 object-cover max-h-32" alt="Source preview">
+                    </div>
+                </div>
+
+                <!-- Grid Settings -->
+                <div class="space-y-4 pt-4 border-t border-slate-100">
+                    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">2. Configuration</h2>
+                    
+                    <!-- Columns -->
+                    <div class="flex justify-between items-center">
+                        <label class="text-sm text-slate-600 font-medium">Columns (Width)</label>
+                        <input type="number" id="widthNum" min="1" max="5000" value="50" class="w-20 text-right text-sm border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 py-0.5">
+                    </div>
+
+                    <!-- Rows -->
+                    <div>
+                        <div class="flex justify-between items-center mb-1">
+                            <label class="text-sm text-slate-600 font-medium">Rows (Height)</label>
+                            <input type="number" id="heightNum" min="1" max="5000" value="50" disabled class="w-20 text-right text-sm border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 py-0.5 disabled:bg-slate-100 disabled:text-slate-400">
+                        </div>
+                        <div class="flex items-center gap-2 mb-2">
+                            <input type="checkbox" id="unlockRatio" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
+                            <label for="unlockRatio" class="text-xs text-slate-500 select-none">Unlock Aspect Ratio</label>
+                        </div>
+                    </div>
+
+                    <!-- Density -->
+                    <div class="flex justify-between items-center" title="How many stitches fit in 10cm (approx 4 inches)">
+                        <label class="text-sm text-slate-600 font-medium">Stitches / 10cm</label>
+                        <input type="number" id="densityNum" min="10" max="200" value="55" class="w-20 text-right text-sm border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 py-0.5">
+                    </div>
+
+                    <!-- Contrast -->
+                    <div class="flex justify-between items-center">
+                        <label class="text-sm text-slate-600 font-medium">Image Contrast (%)</label>
+                        <input type="number" id="contrastNum" min="-50" max="100" value="0" class="w-20 text-right text-sm border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 py-0.5">
+                    </div>
+
+                    <!-- Color Count -->
+                    <div class="flex justify-between items-center">
+                        <label class="text-sm text-slate-600 font-medium">Palette Size</label>
+                        <input type="number" id="colorCountNum" min="2" max="32" value="2" class="w-20 text-right text-sm border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 py-0.5">
+                    </div>
+
+                    <div id="paletteDisplay" class="flex flex-wrap gap-1 pt-2 min-h-[24px]">
+                        <!-- Palette colors inserted here via JS -->
+                    </div>
+
+                    <button id="processBtn" class="w-full bg-slate-800 hover:bg-slate-900 text-white py-2 rounded-md text-sm font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+                        Generate Pattern
+                    </button>
+                    <p id="sizeWarning" class="hidden text-xs text-amber-600 mt-1">Large grids may take longer to generate.</p>
+                </div>
+
+                <!-- Editing Tools -->
+                <div class="space-y-4 pt-4 border-t border-slate-100">
+                    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">3. Refine</h2>
+                    
+                    <div class="flex gap-2 mb-2">
+                        <button id="toolPencil" class="flex-1 py-2 px-3 rounded bg-indigo-100 text-indigo-700 border border-indigo-200 flex justify-center items-center gap-2 text-sm font-medium transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
+                            Paint
+                        </button>
+                        <button id="toolEraser" class="flex-1 py-2 px-3 rounded bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 flex justify-center items-center gap-2 text-sm font-medium transition-colors">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
+                            Erase
+                        </button>
+                    </div>
+
+                    <!-- Active Color / Replace -->
+                    <div class="bg-slate-50 p-3 rounded-md border border-slate-200">
+                        <label class="text-xs text-slate-500 font-bold uppercase mb-2 block">Active Color</label>
+                        <div class="flex items-center justify-between gap-2 mb-3">
+                            <div class="flex items-center gap-2">
+                                <div id="activeColorDisplay" class="w-8 h-8 rounded border border-slate-300 shadow-sm" style="background-color: #ef4444;"></div>
+                                <span id="colorHex" class="text-xs text-slate-600 font-mono">#EF4444</span>
+                            </div>
+                            <input type="color" id="colorPicker" value="#ef4444" class="w-8 h-8 p-0 border-0 rounded cursor-pointer overflow-hidden shadow-sm opacity-0 absolute pointer-events-none">
+                            <label for="colorPicker" class="text-xs text-indigo-600 hover:text-indigo-800 cursor-pointer font-medium">Pick New</label>
+                        </div>
+                        
+                        <button id="batchReplaceBtn" class="w-full text-xs bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 py-1.5 rounded transition-colors shadow-sm">
+                            Replace All Active
+                        </button>
+                    </div>
+
+                    <div class="space-y-2 mt-2">
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="showGridLines" checked class="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
+                            <label for="showGridLines" class="text-sm text-slate-700 select-none cursor-pointer">Show Grid Lines</label>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <input type="checkbox" id="showSections" class="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
+                            <label for="showSections" class="text-sm text-slate-700 select-none cursor-pointer">Mark 100x100 Blocks</label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="flex-1 bg-slate-100 flex flex-col relative min-w-0 z-0">
+            <!-- Toolbar / Status -->
+            <div class="h-10 bg-slate-50 border-b border-slate-200 flex items-center px-4 justify-between shrink-0">
+                <span class="text-xs text-slate-500" id="statusText">Ready</span>
+                <div class="text-xs text-slate-400 font-mono" id="coordinates">0, 0</div>
+            </div>
+
+            <!-- Canvas Container -->
+            <div class="flex-1 overflow-auto p-12 flex canvas-container checkerboard-bg" id="canvasWrapper">
+                <div class="bg-white shadow-xl relative ring-1 ring-slate-900/5 m-auto">
+                    <canvas id="patternCanvas"></canvas>
+                </div>
+                
+                <!-- Empty State -->
+                <div id="emptyState" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 pointer-events-none z-10">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="mb-4 opacity-50"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                    <p class="text-lg font-medium opacity-75">Upload an image to start</p>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Hidden canvas for processing -->
+    <canvas id="processCanvas" class="hidden"></canvas>
+
+    <script>
+        // Constants for Layout
+        const MARGIN_LEFT = 40;
+        const MARGIN_TOP = 40;
+        const MARGIN_RIGHT = 40;
+        const MARGIN_BOTTOM = 40;
+
+        // State
+        const state = {
+            image: null,
+            gridData: [], // 2D array of {r,g,b,a} or hex strings
+            cols: 50,
+            rows: 50,
+            maxColors: 2, // Default 2
+            cellSize: 15,
+            isDrawing: false,
+            currentTool: 'pencil', // 'pencil' or 'eraser'
+            currentColor: '#ef4444',
+            showGrid: true,
+            showSections: false, // 100x100 markers
+            aspectRatio: 1,
+            lockRatio: true,
+            contrast: 0, // -50 to 100
+            density: 55 // stitches per 10cm
+        };
+
+        // DOM Elements
+        const els = {
+            fileInput: document.getElementById('fileInput'),
+            previewContainer: document.getElementById('imagePreviewContainer'),
+            sourcePreview: document.getElementById('sourcePreview'),
+            widthNum: document.getElementById('widthNum'),
+            heightNum: document.getElementById('heightNum'),
+            unlockRatio: document.getElementById('unlockRatio'),
+            contrastInput: document.getElementById('contrastNum'),
+            colorCountInput: document.getElementById('colorCountNum'),
+            densityInput: document.getElementById('densityNum'),
+            paletteDisplay: document.getElementById('paletteDisplay'),
+            processBtn: document.getElementById('processBtn'),
+            sizeWarning: document.getElementById('sizeWarning'),
+            exportBtn: document.getElementById('exportBtn'),
+            exportSectionsBtn: document.getElementById('exportSectionsBtn'),
+            canvas: document.getElementById('patternCanvas'),
+            processCanvas: document.getElementById('processCanvas'),
+            colorPicker: document.getElementById('colorPicker'),
+            activeColorDisplay: document.getElementById('activeColorDisplay'),
+            colorHex: document.getElementById('colorHex'),
+            toolPencil: document.getElementById('toolPencil'),
+            toolEraser: document.getElementById('toolEraser'),
+            batchReplaceBtn: document.getElementById('batchReplaceBtn'),
+            emptyState: document.getElementById('emptyState'),
+            coordinates: document.getElementById('coordinates'),
+            showGridLines: document.getElementById('showGridLines'),
+            showSections: document.getElementById('showSections'),
+            statusText: document.getElementById('statusText'),
+        };
+
+        const ctx = els.canvas.getContext('2d', { alpha: false }); // Optimize
+        const pCtx = els.processCanvas.getContext('2d', { willReadFrequently: true });
+
+        // --- Initialization ---
+        
+        function init() {
+            // Setup Event Listeners
+            els.fileInput.addEventListener('change', handleFileUpload);
+            
+            // Width Controls
+            els.widthNum.addEventListener('input', (e) => updateWidth(e.target.value));
+            
+            // Height Controls
+            els.heightNum.addEventListener('input', (e) => {
+                state.rows = parseInt(e.target.value) || 10;
+            });
+
+            els.unlockRatio.addEventListener('change', (e) => {
+                state.lockRatio = !e.target.checked;
+                els.heightNum.disabled = state.lockRatio;
+                if(state.lockRatio && state.image) calculateRows();
+            });
+
+            // Contrast
+            els.contrastInput.addEventListener('input', (e) => {
+                state.contrast = parseInt(e.target.value) || 0;
+            });
+
+            // Density
+            els.densityInput.addEventListener('input', (e) => {
+                state.density = parseInt(e.target.value) || 55;
+                if(state.gridData.length) render(); // Re-render to update axis
+            });
+
+            // Color Count
+            els.colorCountInput.addEventListener('input', (e) => {
+                let val = parseInt(e.target.value);
+                if (val < 2) val = 2;
+                if (val > 256) val = 256; 
+                state.maxColors = val;
+            });
+
+            els.processBtn.addEventListener('click', () => {
+                // Defer to allow UI update
+                els.statusText.textContent = "Processing...";
+                requestAnimationFrame(generateGrid);
+            });
+            
+            // Color Tools
+            els.colorPicker.addEventListener('input', (e) => updateCurrentColor(e.target.value));
+            
+            els.batchReplaceBtn.addEventListener('click', batchReplaceColor);
+
+            els.toolPencil.addEventListener('click', () => setTool('pencil'));
+            els.toolEraser.addEventListener('click', () => setTool('eraser'));
+            
+            els.showGridLines.addEventListener('change', (e) => {
+                state.showGrid = e.target.checked;
+                render();
+            });
+
+            els.showSections.addEventListener('change', (e) => {
+                state.showSections = e.target.checked;
+                render();
+            });
+
+            els.exportBtn.addEventListener('click', exportImage);
+            els.exportSectionsBtn.addEventListener('click', exportSections);
+
+            // Canvas Interaction
+            els.canvas.addEventListener('mousedown', startDrawing);
+            els.canvas.addEventListener('mousemove', draw);
+            els.canvas.addEventListener('mouseup', stopDrawing);
+            els.canvas.addEventListener('mouseleave', stopDrawing);
+            
+            // Init disable
+            els.processBtn.disabled = true;
+            els.exportBtn.disabled = true;
+            els.exportSectionsBtn.disabled = true;
+        }
+
+        // --- Logic ---
+
+        function updateWidth(val) {
+            let v = parseInt(val);
+            if (v > 5000) v = 5000;
+            if (v < 1) v = 1; // Min 1
+            
+            state.cols = v;
+            els.widthNum.value = v;
+            
+            if (v > 500) {
+                els.sizeWarning.classList.remove('hidden');
+            } else {
+                els.sizeWarning.classList.add('hidden');
+            }
+
+            if (state.lockRatio) calculateRows();
+        }
+
+        function handleFileUpload(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                const img = new Image();
+                img.onload = () => {
+                    state.image = img;
+                    state.aspectRatio = img.width / img.height;
+                    
+                    els.sourcePreview.src = img.src;
+                    els.previewContainer.classList.remove('hidden');
+                    els.processBtn.disabled = false;
+                    els.emptyState.style.display = 'none';
+
+                    if (state.lockRatio) calculateRows();
+                    
+                    // First run
+                    generateGrid();
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function calculateRows() {
+            if (!state.image) return;
+            state.rows = Math.round(state.cols / state.aspectRatio);
+            els.heightNum.value = state.rows;
+        }
+
+        function generateGrid() {
+            if (!state.image) return;
+
+            // Safety cap for extremely large requests
+            const maxPixels = 25000000; // 5000x5000
+            if (state.cols * state.rows > maxPixels) {
+                alert("Grid is too large to render in browser memory. Please reduce dimensions.");
+                els.statusText.textContent = "Error: Too large";
+                return;
+            }
+
+            // Adjust cell size for viewing
+            const maxCanvasDim = 30000;
+            const neededWidth = state.cols * 15;
+            const neededHeight = state.rows * 15;
+            
+            if (neededWidth > maxCanvasDim || neededHeight > maxCanvasDim) {
+                const scaleX = maxCanvasDim / state.cols;
+                const scaleY = maxCanvasDim / state.rows;
+                state.cellSize = Math.floor(Math.min(scaleX, scaleY));
+                if (state.cellSize < 1) state.cellSize = 1;
+            } else {
+                state.cellSize = 15; // default
+            }
+
+            // 1. Resize & Contrast
+            els.processCanvas.width = state.cols;
+            els.processCanvas.height = state.rows;
+            
+            pCtx.clearRect(0, 0, state.cols, state.rows);
+            
+            // Apply Contrast Filter
+            if (state.contrast !== 0) {
+                const contrastPerc = 100 + state.contrast; 
+                pCtx.filter = `contrast(${contrastPerc}%)`;
+            } else {
+                pCtx.filter = 'none';
+            }
+            
+            pCtx.drawImage(state.image, 0, 0, state.cols, state.rows);
+            pCtx.filter = 'none'; // reset
+
+            // 2. Read pixel data
+            let imageData = pCtx.getImageData(0, 0, state.cols, state.rows);
+            
+            // 3. Quantize
+            const quantizedData = quantizeColors(imageData.data, state.maxColors);
+            
+            // 4. Populate
+            state.gridData = [];
+            const paletteSet = new Set();
+
+            let ptr = 0;
+            
+            for (let y = 0; y < state.rows; y++) {
+                const row = new Array(state.cols);
+                for (let x = 0; x < state.cols; x++) {
+                    const r = quantizedData[ptr];
+                    const g = quantizedData[ptr+1];
+                    const b = quantizedData[ptr+2];
+                    const a = quantizedData[ptr+3];
+                    ptr += 4;
+
+                    if (a < 50) {
+                        row[x] = null;
+                    } else {
+                        const hex = rgbToHex(r, g, b);
+                        row[x] = hex;
+                        paletteSet.add(hex);
+                    }
+                }
+                state.gridData.push(row);
+            }
+
+            updatePaletteDisplay(Array.from(paletteSet));
+            resizeCanvas();
+            render();
+            els.exportBtn.disabled = false;
+            els.exportSectionsBtn.disabled = false;
+            els.statusText.textContent = `Generated ${state.cols}x${state.rows}`;
+        }
+
+        function quantizeColors(data, k) {
+            const sampleRate = data.length > 400000 ? 10 : 1; 
+            
+            const pixels = [];
+            for (let i = 0; i < data.length; i += 4 * sampleRate) {
+                if (data[i + 3] > 127) {
+                    pixels.push({ r: data[i], g: data[i + 1], b: data[i + 2] });
+                }
+            }
+
+            if (pixels.length === 0) return data;
+
+            // K-Means
+            let centroids = [];
+            for (let i = 0; i < k; i++) {
+                const p = pixels[Math.floor(Math.random() * pixels.length)];
+                if(p) centroids.push({ ...p });
+                else centroids.push({r:128,g:128,b:128});
+            }
+
+            for (let iter = 0; iter < 5; iter++) {
+                const clusters = centroids.map(() => ({ r: 0, g: 0, b: 0, count: 0 }));
+                
+                pixels.forEach(p => {
+                    let minDist = Infinity;
+                    let idx = 0;
+                    centroids.forEach((c, i) => {
+                        const dist = (p.r - c.r)**2 + (p.g - c.g)**2 + (p.b - c.b)**2;
+                        if (dist < minDist) { minDist = dist; idx = i; }
+                    });
+                    clusters[idx].r += p.r;
+                    clusters[idx].g += p.g;
+                    clusters[idx].b += p.b;
+                    clusters[idx].count++;
+                });
+
+                centroids = clusters.map((c, i) => {
+                    if (c.count === 0) return centroids[i];
+                    return { 
+                        r: Math.round(c.r / c.count), 
+                        g: Math.round(c.g / c.count), 
+                        b: Math.round(c.b / c.count) 
+                    };
+                });
+            }
+
+            const result = new Uint8ClampedArray(data.length);
+            for(let i=0; i<data.length; i+=4) {
+                if (data[i+3] < 127) {
+                    result[i+3] = 0;
+                    continue;
+                }
+                let minDist = Infinity;
+                let bestC = centroids[0];
+                for(let j=0; j<centroids.length; j++) {
+                     const c = centroids[j];
+                     const dist = (data[i] - c.r)**2 + (data[i+1] - c.g)**2 + (data[i+2] - c.b)**2;
+                     if(dist < minDist) { minDist = dist; bestC = c; }
+                }
+                result[i] = bestC.r;
+                result[i+1] = bestC.g;
+                result[i+2] = bestC.b;
+                result[i+3] = 255;
+            }
+            return result;
+        }
+
+        function rgbToHex(r, g, b) {
+            return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1);
+        }
+
+        function updatePaletteDisplay(colors) {
+            els.paletteDisplay.innerHTML = '';
+            colors.sort();
+            colors.forEach(color => {
+                const swatch = document.createElement('div');
+                swatch.className = 'w-6 h-6 rounded border border-slate-200 cursor-pointer shadow-sm hover:scale-110 transition-transform ring-offset-1 hover:ring-2 hover:ring-indigo-400';
+                swatch.style.backgroundColor = color;
+                swatch.title = "Select " + color;
+                swatch.onclick = () => {
+                    updateCurrentColor(color);
+                    setTool('pencil');
+                };
+                els.paletteDisplay.appendChild(swatch);
+            });
+        }
+
+        function updateCurrentColor(hex) {
+            state.currentColor = hex;
+            els.colorPicker.value = hex;
+            els.activeColorDisplay.style.backgroundColor = hex;
+            els.colorHex.textContent = hex.toUpperCase();
+        }
+
+        function batchReplaceColor() {
+            if (!state.gridData.length) return;
+            const targetHex = state.currentColor;
+            const tempInput = document.createElement('input');
+            tempInput.type = 'color';
+            tempInput.value = targetHex;
+            tempInput.onchange = (e) => {
+                const newHex = e.target.value;
+                if (newHex === targetHex) return;
+                let count = 0;
+                for(let y=0; y<state.rows; y++) {
+                    for(let x=0; x<state.cols; x++) {
+                        if (state.gridData[y][x] === targetHex) {
+                            state.gridData[y][x] = newHex;
+                            count++;
+                        }
+                    }
+                }
+                updateCurrentColor(newHex);
+                const newPalette = new Set();
+                state.gridData.flat().forEach(c => { if(c) newPalette.add(c) });
+                updatePaletteDisplay(Array.from(newPalette));
+                render();
+                els.statusText.textContent = `Replaced ${count} cells`;
+            };
+            tempInput.click();
+        }
+
+        function resizeCanvas() {
+            // Add margins to width and height
+            els.canvas.width = (state.cols * state.cellSize) + MARGIN_LEFT + MARGIN_RIGHT;
+            els.canvas.height = (state.rows * state.cellSize) + MARGIN_TOP + MARGIN_BOTTOM;
+        }
+
+        function render() {
+            // Fill background white
+            ctx.fillStyle = "#ffffff";
+            ctx.fillRect(0, 0, els.canvas.width, els.canvas.height);
+
+            // Draw Margins areas
+            ctx.fillStyle = "#f8fafc";
+            ctx.fillRect(0, 0, MARGIN_LEFT, els.canvas.height); // Left
+            ctx.fillRect(0, 0, els.canvas.width, MARGIN_TOP); // Top
+            ctx.fillRect(els.canvas.width - MARGIN_RIGHT, 0, MARGIN_RIGHT, els.canvas.height); // Right
+            ctx.fillRect(0, els.canvas.height - MARGIN_BOTTOM, els.canvas.width, MARGIN_BOTTOM); // Bottom
+
+            // Offset context for grid drawing
+            ctx.save();
+            ctx.translate(MARGIN_LEFT, MARGIN_TOP);
+
+            // Draw Cells
+            for (let y = 0; y < state.rows; y++) {
+                for (let x = 0; x < state.cols; x++) {
+                    const color = state.gridData[y][x];
+                    if (color) {
+                        ctx.fillStyle = color;
+                        ctx.fillRect(x * state.cellSize, y * state.cellSize, state.cellSize, state.cellSize);
+                    }
+                }
+            }
+
+            // Draw Grid Lines
+            if (state.showGrid && state.cellSize > 2) {
+                ctx.beginPath();
+                ctx.lineWidth = 1;
+                ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+
+                // Vertical
+                for (let x = 0; x <= state.cols; x++) {
+                    ctx.moveTo(x * state.cellSize, 0);
+                    ctx.lineTo(x * state.cellSize, state.rows * state.cellSize);
+                }
+                // Horizontal
+                for (let y = 0; y <= state.rows; y++) {
+                    ctx.moveTo(0, y * state.cellSize);
+                    ctx.lineTo(state.cols * state.cellSize, y * state.cellSize);
+                }
+                ctx.stroke();
+
+                // Major Lines (Every 5)
+                ctx.beginPath();
+                ctx.lineWidth = 1.5;
+                ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+                for (let x = 0; x <= state.cols; x += 5) {
+                    ctx.moveTo(x * state.cellSize, 0);
+                    ctx.lineTo(x * state.cellSize, state.rows * state.cellSize);
+                }
+                for (let y = 0; y <= state.rows; y += 5) {
+                    ctx.moveTo(0, y * state.cellSize);
+                    ctx.lineTo(state.cols * state.cellSize, y * state.cellSize);
+                }
+                ctx.stroke();
+
+                // Section Lines (Every 100) - If enabled
+                if (state.showSections) {
+                    ctx.beginPath();
+                    ctx.lineWidth = 3;
+                    ctx.strokeStyle = '#ef4444'; // Red
+                    for (let x = 0; x <= state.cols; x += 100) {
+                        ctx.moveTo(x * state.cellSize, 0);
+                        ctx.lineTo(x * state.cellSize, state.rows * state.cellSize);
+                    }
+                    for (let y = 0; y <= state.rows; y += 100) {
+                        ctx.moveTo(0, y * state.cellSize);
+                        ctx.lineTo(state.cols * state.cellSize, y * state.cellSize);
+                    }
+                    ctx.stroke();
+                }
+            }
+
+            ctx.restore(); // Undo translation
+
+            // --- DRAW AXES ---
+            
+            ctx.fillStyle = "#475569";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.font = "10px sans-serif";
+
+            // 1. TOP AXIS (Column Numbers) - Every 5
+            for (let x = 5; x <= state.cols; x += 5) {
+                const xPos = MARGIN_LEFT + (x * state.cellSize);
+                ctx.fillText(x, xPos, MARGIN_TOP / 2);
+                
+                // Tick mark
+                ctx.beginPath();
+                ctx.moveTo(xPos, MARGIN_TOP - 5);
+                ctx.lineTo(xPos, MARGIN_TOP);
+                ctx.strokeStyle = "#94a3b8";
+                ctx.stroke();
+            }
+
+            // 2. LEFT AXIS (Row Numbers) - Every 5
+            for (let y = 5; y <= state.rows; y += 5) {
+                const yPos = MARGIN_TOP + (y * state.cellSize);
+                ctx.fillText(y, MARGIN_LEFT / 2, yPos);
+
+                // Tick mark
+                ctx.beginPath();
+                ctx.moveTo(MARGIN_LEFT - 5, yPos);
+                ctx.lineTo(MARGIN_LEFT, yPos);
+                ctx.strokeStyle = "#94a3b8";
+                ctx.stroke();
+            }
+
+            // 3. BOTTOM & RIGHT AXIS (Physical Dimensions)
+            const stitchesPerCm = state.density / 10;
+            const pixelsPerCm = state.cellSize * stitchesPerCm;
+            
+            // Width
+            const widthCm = state.cols / stitchesPerCm;
+            for (let cm = 5; cm <= widthCm; cm += 5) {
+                const xPos = MARGIN_LEFT + (cm * pixelsPerCm);
+                ctx.fillText(cm + "cm", xPos, els.canvas.height - (MARGIN_BOTTOM / 2));
+                
+                ctx.beginPath();
+                ctx.moveTo(xPos, els.canvas.height - MARGIN_BOTTOM);
+                ctx.lineTo(xPos, els.canvas.height - MARGIN_BOTTOM + 5);
+                ctx.strokeStyle = "#64748b";
+                ctx.stroke();
+            }
+
+            // Height
+            const heightCm = state.rows / stitchesPerCm;
+            for (let cm = 5; cm <= heightCm; cm += 5) {
+                const yPos = MARGIN_TOP + (cm * pixelsPerCm);
+                ctx.fillText(cm + "cm", els.canvas.width - (MARGIN_RIGHT / 2), yPos);
+
+                ctx.beginPath();
+                ctx.moveTo(els.canvas.width - MARGIN_RIGHT, yPos);
+                ctx.lineTo(els.canvas.width - MARGIN_RIGHT + 5, yPos);
+                ctx.strokeStyle = "#64748b";
+                ctx.stroke();
+            }
+        }
+
+        // --- Interaction ---
+
+        function setTool(tool) {
+            state.currentTool = tool;
+            
+            if (tool === 'pencil') {
+                els.toolPencil.className = "flex-1 py-2 px-3 rounded bg-indigo-100 text-indigo-700 border border-indigo-200 flex justify-center items-center gap-2 text-sm font-medium transition-colors";
+                els.toolEraser.className = "flex-1 py-2 px-3 rounded bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 flex justify-center items-center gap-2 text-sm font-medium transition-colors";
+            } else {
+                els.toolEraser.className = "flex-1 py-2 px-3 rounded bg-indigo-100 text-indigo-700 border border-indigo-200 flex justify-center items-center gap-2 text-sm font-medium transition-colors";
+                els.toolPencil.className = "flex-1 py-2 px-3 rounded bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 flex justify-center items-center gap-2 text-sm font-medium transition-colors";
+            }
+        }
+
+        function getGridCoordinates(e) {
+            const rect = els.canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // Adjust for margins
+            const gridX = x - MARGIN_LEFT;
+            const gridY = y - MARGIN_TOP;
+            
+            const col = Math.floor(gridX / state.cellSize);
+            const row = Math.floor(gridY / state.cellSize);
+            return { col, row };
+        }
+
+        function startDrawing(e) {
+            state.isDrawing = true;
+            paint(e);
+        }
+
+        function stopDrawing() {
+            state.isDrawing = false;
+        }
+
+        function draw(e) {
+            const { col, row } = getGridCoordinates(e);
+            if (col >= 0 && col < state.cols && row >= 0 && row < state.rows) {
+                els.coordinates.textContent = `${col + 1}, ${row + 1}`;
+            }
+
+            if (state.isDrawing) {
+                paint(e);
+            }
+        }
+
+        function paint(e) {
+            if (!state.gridData.length) return;
+            const { col, row } = getGridCoordinates(e);
+            if (col < 0 || col >= state.cols || row < 0 || row >= state.rows) return;
+
+            if (state.currentTool === 'pencil') {
+                if (state.gridData[row][col] !== state.currentColor) {
+                    state.gridData[row][col] = state.currentColor;
+                    // Draw with offset
+                    const drawX = MARGIN_LEFT + (col * state.cellSize);
+                    const drawY = MARGIN_TOP + (row * state.cellSize);
+                    
+                    ctx.fillStyle = state.currentColor;
+                    ctx.fillRect(drawX, drawY, state.cellSize, state.cellSize);
+                    
+                    if(state.showGrid && state.cellSize > 2) {
+                        ctx.lineWidth = 1;
+                        ctx.strokeStyle = 'rgba(0,0,0,0.1)';
+                        ctx.strokeRect(drawX, drawY, state.cellSize, state.cellSize);
+                    }
+                }
+            } else if (state.currentTool === 'eraser') {
+                if (state.gridData[row][col] !== null) {
+                    state.gridData[row][col] = null;
+                    const drawX = MARGIN_LEFT + (col * state.cellSize);
+                    const drawY = MARGIN_TOP + (row * state.cellSize);
+                    ctx.fillStyle = "#ffffff";
+                    ctx.fillRect(drawX, drawY, state.cellSize, state.cellSize);
+                }
+            }
+        }
+
+        function exportImage() {
+            const link = document.createElement('a');
+            link.download = `stitch-pattern-${state.cols}x${state.rows}.png`;
+            link.href = els.canvas.toDataURL('image/png');
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Logic to slice the grid into 100x100 images and open in a new window
+        function exportSections() {
+            if (!state.gridData.length) return;
+
+            const sectionSize = 100;
+            const win = window.open('', '_blank');
+            if(!win) { alert("Pop-up blocked. Please allow pop-ups to view sections."); return; }
+
+            win.document.write(`
+                <html>
+                <head>
+                    <title>StitchGrid - Sections</title>
+                    <style>
+                        body { font-family: sans-serif; padding: 20px; background: #f0f0f0; }
+                        .section { margin-bottom: 40px; background: white; padding: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+                        h3 { margin: 0 0 10px 0; color: #333; }
+                        img { max-width: 100%; border: 1px solid #ccc; image-rendering: pixelated; }
+                        @media print {
+                            body { background: white; }
+                            .section { break-inside: avoid; box-shadow: none; border-bottom: 1px dashed #ccc; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <h1>Pattern Sections (100x100)</h1>
+                    <p>Right click images to save, or use Ctrl+P to print.</p>
+            `);
+
+            // Iterate 100x100 chunks
+            for (let y = 0; y < state.rows; y += sectionSize) {
+                for (let x = 0; x < state.cols; x += sectionSize) {
+                    const w = Math.min(sectionSize, state.cols - x);
+                    const h = Math.min(sectionSize, state.rows - y);
+
+                    // Create temp canvas for this section
+                    const tCanvas = document.createElement('canvas');
+                    // Add some margin for labels
+                    const pad = 20; 
+                    const cellSize = Math.max(10, state.cellSize); // Ensure readable size in export
+                    
+                    tCanvas.width = (w * cellSize) + pad*2;
+                    tCanvas.height = (h * cellSize) + pad*2;
+                    const tCtx = tCanvas.getContext('2d');
+
+                    tCtx.fillStyle = "white";
+                    tCtx.fillRect(0, 0, tCanvas.width, tCanvas.height);
+                    
+                    tCtx.translate(pad, pad);
+                    
+                    // Draw Grid in chunk
+                    for(let sy = 0; sy < h; sy++) {
+                        for(let sx = 0; sx < w; sx++) {
+                             const color = state.gridData[y + sy][x + sx];
+                             if(color) {
+                                 tCtx.fillStyle = color;
+                                 tCtx.fillRect(sx*cellSize, sy*cellSize, cellSize, cellSize);
+                             }
+                             // Grid lines
+                             tCtx.strokeStyle = "#ccc";
+                             tCtx.lineWidth = 1;
+                             tCtx.strokeRect(sx*cellSize, sy*cellSize, cellSize, cellSize);
+                        }
+                    }
+
+                    // Labels
+                    tCtx.fillStyle = "black";
+                    tCtx.font = "12px sans-serif";
+                    tCtx.fillText(`Cols: ${x+1}-${x+w}`, 0, -5);
+                    tCtx.fillText(`Rows: ${y+1}-${y+h}`, -5, 0);
+
+                    win.document.write(`
+                        <div class="section">
+                            <h3>Section: Cols ${x+1}-${x+w}, Rows ${y+1}-${y+h}</h3>
+                            <img src="${tCanvas.toDataURL()}">
+                        </div>
+                    `);
+                }
+            }
+
+            win.document.write('</body></html>');
+            win.document.close();
+        }
+
+        // Run
+        init();
+
+    </script>
+</body>
+</html>
