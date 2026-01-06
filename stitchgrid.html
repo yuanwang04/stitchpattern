@@ -3,27 +3,166 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>StitchGrid - Pattern Maker</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>StitchGrid - Offline & Fast</title>
     <style>
-        .canvas-container::-webkit-scrollbar {
-            width: 12px;
-            height: 12px;
+        :root {
+            --primary: #4f46e5;
+            --primary-hover: #4338ca;
+            --bg-body: #f8fafc;
+            --bg-panel: #ffffff;
+            --border: #e2e8f0;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --danger: #ef4444;
         }
-        .canvas-container::-webkit-scrollbar-track {
+
+        * { box-sizing: border-box; }
+        
+        body {
+            margin: 0;
+            font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-body);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* --- Layout --- */
+        header {
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            padding: 0.75rem 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-shrink: 0;
+            z-index: 30;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+            position: relative;
+        }
+
+        aside {
+            width: 320px;
+            background: var(--bg-panel);
+            border-right: 1px solid var(--border);
+            overflow-y: auto;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            padding: 1.25rem;
+            gap: 1.5rem;
+            box-shadow: 4px 0 24px rgba(0,0,0,0.02);
+            z-index: 20;
+        }
+
+        main {
+            flex: 1;
             background: #f1f5f9;
-            border-radius: 4px;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+            min-width: 0;
         }
-        .canvas-container::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 4px;
-            border: 2px solid #f1f5f9;
+
+        /* --- Components --- */
+        h1 { font-size: 1.25rem; font-weight: 700; margin: 0; display: flex; align-items: center; gap: 0.5rem; color: var(--text-main); }
+        h2 { font-size: 0.75rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #94a3b8; margin: 0 0 0.5rem 0; }
+        
+        button {
+            cursor: pointer;
+            border: 1px solid var(--border);
+            background: var(--bg-panel);
+            color: var(--text-main);
+            padding: 0.5rem 1rem;
+            border-radius: 0.5rem;
+            font-size: 0.875rem;
+            font-weight: 500;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            transition: all 0.2s;
         }
-        .canvas-container::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
+        button:hover { background: #f8fafc; }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        button.primary {
+            background: var(--primary);
+            color: white;
+            border-color: transparent;
+        }
+        button.primary:hover { background: var(--primary-hover); }
+
+        button.tool-btn { flex: 1; }
+        button.tool-btn.active {
+            background: #e0e7ff;
+            color: var(--primary);
+            border-color: #c7d2fe;
         }
         
-        .checkerboard-bg {
+        button.debug-btn {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.75rem;
+            color: var(--text-muted);
+            border-color: transparent;
+            background: transparent;
+        }
+        button.debug-btn:hover {
+            background: #f1f5f9;
+            color: var(--text-main);
+            border-color: var(--border);
+        }
+
+        input[type="number"], input[type="text"] {
+            width: 100%;
+            padding: 0.25rem 0.5rem;
+            border: 1px solid var(--border);
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            text-align: right;
+        }
+        
+        .control-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+        .control-row label { font-size: 0.875rem; font-weight: 500; color: #475569; }
+        .control-row input { width: 5rem; }
+
+        /* Upload Box */
+        .upload-box {
+            border: 2px dashed #cbd5e1;
+            border-radius: 0.5rem;
+            padding: 1.5rem;
+            text-align: center;
+            cursor: pointer;
+            transition: border-color 0.2s;
+            background: #f8fafc;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+        .upload-box:hover { border-color: var(--primary); background: #f1f5f9; }
+        .upload-text { font-size: 0.75rem; color: var(--text-muted); margin-top: 0.5rem; }
+        
+        /* Canvas Area */
+        .canvas-wrapper {
+            flex: 1;
+            overflow: auto;
+            padding: 2rem;
+            display: flex;
+            /* Checkerboard Pattern */
             background-color: #ffffff;
             background-image: 
                 linear-gradient(45deg, #f0f0f0 25%, transparent 25%), 
@@ -33,165 +172,199 @@
             background-size: 20px 20px;
             background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
         }
+
+        canvas {
+            background: white;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            margin: auto; /* Centers in flex container */
+            image-rendering: pixelated;
+        }
+
+        .status-bar {
+            height: 2.5rem;
+            background: var(--bg-panel);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 0 1rem;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            flex-shrink: 0;
+        }
+
+        /* Utils */
+        .hidden { display: none !important; }
+        .divider { border-top: 1px solid #f1f5f9; margin: 1rem 0; }
+        .preview-img { width: 100%; height: auto; max-height: 120px; object-fit: contain; border-radius: 4px; border: 1px solid var(--border); margin-top: 0.5rem; background: #fff; }
+        
+        .palette { display: flex; flex-wrap: wrap; gap: 4px; padding-top: 0.5rem; min-height: 24px; }
+        .swatch {
+            width: 24px; height: 24px;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+            cursor: pointer;
+            transition: transform 0.1s;
+        }
+        .swatch:hover { transform: scale(1.1); box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        
+        .active-color-row {
+            background: #f8fafc;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            border: 1px solid var(--border);
+        }
+        
+        .color-preview {
+            width: 2rem; height: 2rem;
+            border-radius: 4px;
+            border: 1px solid #cbd5e1;
+            display: inline-block;
+        }
+        
+        /* Mobile responsive adjustments */
+        @media (max-width: 768px) {
+            body { height: 100%; overflow: auto; }
+            .main-container { flex-direction: column; overflow: visible; }
+            aside { width: 100%; height: auto; border-right: none; border-bottom: 1px solid var(--border); }
+            .canvas-wrapper { height: 500px; }
+        }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-800 h-screen flex flex-col font-sans overflow-hidden">
+<body>
 
     <!-- Header -->
-    <header class="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shrink-0 shadow-sm z-30 relative">
-        <div class="flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-600"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-            <h1 class="text-xl font-bold text-slate-800">StitchGrid</h1>
+    <header>
+        <div style="display:flex; align-items:center; gap:8px;">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+            <h1>StitchGrid</h1>
+            <button id="debugBtn" class="debug-btn" title="Show system info">Debug</button>
         </div>
-        <div class="flex gap-2">
-             <button id="exportSectionsBtn" class="flex items-center gap-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+        <div style="display:flex; gap:8px;">
+             <button id="exportSectionsBtn" disabled>
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="M3 9h18"/></svg>
-                Export Sections
+                Sections
             </button>
-             <button id="exportBtn" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
+             <button id="exportBtn" class="primary" disabled>
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
-                Export Full
+                Export
             </button>
         </div>
     </header>
 
-    <div class="flex flex-1 overflow-hidden relative z-0">
+    <div class="main-container">
         
-        <!-- Sidebar Controls -->
-        <aside class="w-80 bg-white border-r border-slate-200 flex flex-col overflow-y-auto shrink-0 z-20 shadow-[4px_0_24px_rgba(0,0,0,0.02)]">
-            <div class="p-5 space-y-6">
+        <!-- Sidebar -->
+        <aside>
+            <!-- Upload -->
+            <div>
+                <h2>1. Source Image</h2>
+                <label for="fileInput" class="upload-box">
+                    <svg style="width:24px; height:24px; color:#94a3b8; margin-bottom:4px;" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/></svg>
+                    <div class="upload-text"><strong>Click to Upload</strong></div>
+                    <input id="fileInput" type="file" class="hidden" accept="image/*" />
+                </label>
+                <img id="sourcePreview" class="preview-img hidden" alt="Source">
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Settings -->
+            <div>
+                <h2>2. Configuration</h2>
                 
-                <!-- Upload Section -->
-                <div class="space-y-3">
-                    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">1. Source Image</h2>
-                    <div class="relative group">
-                        <label for="fileInput" class="flex flex-col items-center justify-center w-full h-24 border-2 border-dashed border-slate-300 rounded-lg cursor-pointer bg-slate-50 hover:bg-slate-100 hover:border-indigo-400 transition-all">
-                            <div class="flex flex-col items-center justify-center pt-2 pb-3">
-                                <svg class="w-6 h-6 mb-1 text-slate-400 group-hover:text-indigo-500" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 20 16"><path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 13h3a3 3 0 0 0 0-6h-.025A5.56 5.56 0 0 0 16 6.5 5.5 5.5 0 0 0 5.207 5.021C5.137 5.017 5.071 5 5 5a4 4 0 0 0 0 8h2.167M10 15V6m0 0L8 8m2-2 2 2"/></svg>
-                                <p class="text-xs text-slate-500"><span class="font-semibold">Upload</span> image</p>
-                            </div>
-                            <input id="fileInput" type="file" class="hidden" accept="image/*" />
+                <div class="control-row">
+                    <label>Columns (Width)</label>
+                    <input type="number" id="widthNum" min="1" max="5000" value="50">
+                </div>
+
+                <div class="control-row" style="margin-bottom:0.25rem;">
+                    <label>Rows (Height)</label>
+                    <input type="number" id="heightNum" min="1" max="5000" value="50" disabled>
+                </div>
+                
+                <div style="display:flex; gap:0.5rem; align-items:center; margin-bottom:0.75rem;">
+                    <input type="checkbox" id="unlockRatio">
+                    <label for="unlockRatio" style="font-size:0.75rem; color:#64748b;">Unlock Aspect Ratio</label>
+                </div>
+
+                <div class="control-row">
+                    <label title="Stitches per 10cm">Stitches / 10cm</label>
+                    <input type="number" id="densityNum" min="10" max="200" value="55">
+                </div>
+
+                <div class="control-row">
+                    <label>Contrast (%)</label>
+                    <input type="number" id="contrastNum" min="-50" max="100" value="0">
+                </div>
+
+                <div class="control-row">
+                    <label>Palette Size</label>
+                    <input type="number" id="colorCountNum" min="2" max="32" value="4">
+                </div>
+
+                <div id="paletteDisplay" class="palette"></div>
+
+                <button id="processBtn" class="primary" style="width:100%; margin-top:1rem; background:#1e293b;" disabled>
+                    Generate Pattern
+                </button>
+            </div>
+
+            <div class="divider"></div>
+
+            <!-- Tools -->
+            <div>
+                <h2>3. Refine</h2>
+                
+                <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+                    <button id="toolPencil" class="tool-btn active">Paint</button>
+                    <button id="toolEraser" class="tool-btn">Erase</button>
+                </div>
+
+                <div class="active-color-row">
+                    <label style="font-size:0.75rem; font-weight:700; color:#64748b; text-transform:uppercase; display:block; margin-bottom:0.5rem;">Active Color</label>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <div style="display:flex; align-items:center; gap:0.5rem;">
+                            <div id="activeColorDisplay" class="color-preview" style="background-color: #ef4444;"></div>
+                            <span id="colorHex" style="font-family:monospace; font-size:0.75rem;">#EF4444</span>
+                        </div>
+                        <label style="color:var(--primary); font-size:0.75rem; font-weight:600; cursor:pointer;">
+                            Pick New
+                            <input type="color" id="colorPicker" value="#ef4444" style="opacity:0; width:1px; height:1px; position:absolute;">
                         </label>
                     </div>
-                    <div id="imagePreviewContainer" class="hidden">
-                        <img id="sourcePreview" class="w-full h-auto rounded-md border border-slate-200 object-cover max-h-32" alt="Source preview">
-                    </div>
+                    <button id="batchReplaceBtn" style="width:100%; margin-top:0.5rem; font-size:0.75rem; padding:4px;">Replace All Active</button>
                 </div>
 
-                <!-- Grid Settings -->
-                <div class="space-y-4 pt-4 border-t border-slate-100">
-                    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">2. Configuration</h2>
-                    
-                    <!-- Columns -->
-                    <div class="flex justify-between items-center">
-                        <label class="text-sm text-slate-600 font-medium">Columns (Width)</label>
-                        <input type="number" id="widthNum" min="1" max="5000" value="50" class="w-20 text-right text-sm border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 py-0.5">
+                <div style="margin-top:1rem; display:flex; flex-direction:column; gap:0.5rem;">
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <input type="checkbox" id="showGridLines" checked>
+                        <label for="showGridLines" style="font-size:0.875rem;">Show Grid Lines</label>
                     </div>
-
-                    <!-- Rows -->
-                    <div>
-                        <div class="flex justify-between items-center mb-1">
-                            <label class="text-sm text-slate-600 font-medium">Rows (Height)</label>
-                            <input type="number" id="heightNum" min="1" max="5000" value="50" disabled class="w-20 text-right text-sm border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 py-0.5 disabled:bg-slate-100 disabled:text-slate-400">
-                        </div>
-                        <div class="flex items-center gap-2 mb-2">
-                            <input type="checkbox" id="unlockRatio" class="rounded border-slate-300 text-indigo-600 focus:ring-indigo-500">
-                            <label for="unlockRatio" class="text-xs text-slate-500 select-none">Unlock Aspect Ratio</label>
-                        </div>
-                    </div>
-
-                    <!-- Density -->
-                    <div class="flex justify-between items-center" title="How many stitches fit in 10cm (approx 4 inches)">
-                        <label class="text-sm text-slate-600 font-medium">Stitches / 10cm</label>
-                        <input type="number" id="densityNum" min="10" max="200" value="55" class="w-20 text-right text-sm border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 py-0.5">
-                    </div>
-
-                    <!-- Contrast -->
-                    <div class="flex justify-between items-center">
-                        <label class="text-sm text-slate-600 font-medium">Image Contrast (%)</label>
-                        <input type="number" id="contrastNum" min="-50" max="100" value="0" class="w-20 text-right text-sm border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 py-0.5">
-                    </div>
-
-                    <!-- Color Count -->
-                    <div class="flex justify-between items-center">
-                        <label class="text-sm text-slate-600 font-medium">Palette Size</label>
-                        <input type="number" id="colorCountNum" min="2" max="32" value="2" class="w-20 text-right text-sm border-slate-300 rounded-md focus:ring-indigo-500 focus:border-indigo-500 py-0.5">
-                    </div>
-
-                    <div id="paletteDisplay" class="flex flex-wrap gap-1 pt-2 min-h-[24px]">
-                        <!-- Palette colors inserted here via JS -->
-                    </div>
-
-                    <button id="processBtn" class="w-full bg-slate-800 hover:bg-slate-900 text-white py-2 rounded-md text-sm font-medium transition-colors shadow-sm disabled:opacity-50 disabled:cursor-not-allowed">
-                        Generate Pattern
-                    </button>
-                    <p id="sizeWarning" class="hidden text-xs text-amber-600 mt-1">Large grids may take longer to generate.</p>
-                </div>
-
-                <!-- Editing Tools -->
-                <div class="space-y-4 pt-4 border-t border-slate-100">
-                    <h2 class="text-xs font-bold text-slate-400 uppercase tracking-wider">3. Refine</h2>
-                    
-                    <div class="flex gap-2 mb-2">
-                        <button id="toolPencil" class="flex-1 py-2 px-3 rounded bg-indigo-100 text-indigo-700 border border-indigo-200 flex justify-center items-center gap-2 text-sm font-medium transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"/></svg>
-                            Paint
-                        </button>
-                        <button id="toolEraser" class="flex-1 py-2 px-3 rounded bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 flex justify-center items-center gap-2 text-sm font-medium transition-colors">
-                            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 21-4.3-4.3c-1-1-1-2.5 0-3.4l9.6-9.6c1-1 2.5-1 3.4 0l5.6 5.6c1 1 1 2.5 0 3.4L13 21"/><path d="M22 21H7"/><path d="m5 11 9 9"/></svg>
-                            Erase
-                        </button>
-                    </div>
-
-                    <!-- Active Color / Replace -->
-                    <div class="bg-slate-50 p-3 rounded-md border border-slate-200">
-                        <label class="text-xs text-slate-500 font-bold uppercase mb-2 block">Active Color</label>
-                        <div class="flex items-center justify-between gap-2 mb-3">
-                            <div class="flex items-center gap-2">
-                                <div id="activeColorDisplay" class="w-8 h-8 rounded border border-slate-300 shadow-sm" style="background-color: #ef4444;"></div>
-                                <span id="colorHex" class="text-xs text-slate-600 font-mono">#EF4444</span>
-                            </div>
-                            <input type="color" id="colorPicker" value="#ef4444" class="w-8 h-8 p-0 border-0 rounded cursor-pointer overflow-hidden shadow-sm opacity-0 absolute pointer-events-none">
-                            <label for="colorPicker" class="text-xs text-indigo-600 hover:text-indigo-800 cursor-pointer font-medium">Pick New</label>
-                        </div>
-                        
-                        <button id="batchReplaceBtn" class="w-full text-xs bg-white border border-slate-300 hover:bg-slate-50 text-slate-700 py-1.5 rounded transition-colors shadow-sm">
-                            Replace All Active
-                        </button>
-                    </div>
-
-                    <div class="space-y-2 mt-2">
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" id="showGridLines" checked class="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
-                            <label for="showGridLines" class="text-sm text-slate-700 select-none cursor-pointer">Show Grid Lines</label>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <input type="checkbox" id="showSections" class="w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500">
-                            <label for="showSections" class="text-sm text-slate-700 select-none cursor-pointer">Mark 100x100 Blocks</label>
-                        </div>
+                    <div style="display:flex; align-items:center; gap:0.5rem;">
+                        <input type="checkbox" id="showSections">
+                        <label for="showSections" style="font-size:0.875rem;">Mark 100x100 Blocks</label>
                     </div>
                 </div>
             </div>
         </aside>
 
-        <!-- Main Workspace -->
-        <main class="flex-1 bg-slate-100 flex flex-col relative min-w-0 z-0">
-            <!-- Toolbar / Status -->
-            <div class="h-10 bg-slate-50 border-b border-slate-200 flex items-center px-4 justify-between shrink-0">
-                <span class="text-xs text-slate-500" id="statusText">Ready</span>
-                <div class="text-xs text-slate-400 font-mono" id="coordinates">0, 0</div>
+        <!-- Main -->
+        <main>
+            <div class="status-bar">
+                <span id="statusText">Ready</span>
+                <span id="coordinates" style="font-family:monospace;">0, 0</span>
             </div>
 
-            <!-- Canvas Container -->
-            <div class="flex-1 overflow-auto p-12 flex canvas-container checkerboard-bg" id="canvasWrapper">
-                <div class="bg-white shadow-xl relative ring-1 ring-slate-900/5 m-auto">
+            <div class="canvas-wrapper" id="canvasWrapper">
+                <div style="position:relative; margin:auto;">
                     <canvas id="patternCanvas"></canvas>
-                </div>
-                
-                <!-- Empty State -->
-                <div id="emptyState" class="absolute inset-0 flex flex-col items-center justify-center text-slate-400 pointer-events-none z-10">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" class="mb-4 opacity-50"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
-                    <p class="text-lg font-medium opacity-75">Upload an image to start</p>
+                    
+                    <!-- Empty State -->
+                    <div id="emptyState" style="position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; color:#cbd5e1; pointer-events:none;">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18"/><path d="M9 21V9"/></svg>
+                        <p style="margin-top:1rem; font-weight:500;">Upload an image to start</p>
+                    </div>
                 </div>
             </div>
         </main>
@@ -201,281 +374,302 @@
     <canvas id="processCanvas" class="hidden"></canvas>
 
     <script>
-        // Constants for Layout
-        const MARGIN_LEFT = 40;
-        const MARGIN_TOP = 40;
-        const MARGIN_RIGHT = 40;
-        const MARGIN_BOTTOM = 40;
+        // --- 0. Global Error Handling (Diagnostics) ---
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            const memInfo = (window.performance && window.performance.memory) 
+                ? Math.round(window.performance.memory.usedJSHeapSize / 1048576) + 'MB' 
+                : 'N/A';
+                
+            const errorInfo = [
+                'ERROR: ' + msg,
+                'Line: ' + lineNo,
+                'Column: ' + columnNo,
+                'Stack: ' + (error ? error.stack : 'N/A'),
+                'UserAgent: ' + navigator.userAgent,
+                'Memory: ' + memInfo
+            ].join('\n');
+            
+            alert("⚠️ Application Error:\n" + errorInfo + "\n\nPlease take a screenshot of this alert.");
+            return false; // Let default handler run as well
+        };
 
-        // State
+        window.onunhandledrejection = function(event) {
+            alert("⚠️ Async Error: " + event.reason);
+        };
+
+        function showDiagnostics() {
+            const canvas = document.getElementById('patternCanvas');
+            const pCanvas = document.getElementById('processCanvas');
+            
+            const diag = [
+                '--- SYSTEM DIAGNOSTICS ---',
+                'User Agent: ' + navigator.userAgent,
+                'Screen: ' + window.screen.width + 'x' + window.screen.height,
+                'Window: ' + window.innerWidth + 'x' + window.innerHeight,
+                'Device Pixel Ratio: ' + window.devicePixelRatio,
+                '',
+                '--- MEMORY (If Available) ---',
+                'Used JS Heap: ' + (window.performance && window.performance.memory ? Math.round(window.performance.memory.usedJSHeapSize / 1048576) + 'MB' : 'N/A'),
+                '',
+                '--- APPLICATION STATE ---',
+                'Grid Dimensions: ' + state.cols + ' x ' + state.rows,
+                'Cell Size: ' + state.cellSize,
+                'Canvas Size: ' + (canvas ? canvas.width + 'x' + canvas.height : 'Not created'),
+                'Image Loaded: ' + (state.imageObj ? 'Yes (' + state.imageObj.width + 'x' + state.imageObj.height + ')' : 'No'),
+                'Image URL: ' + (state.imageUrl ? 'Active (Blob)' : 'None'),
+                'Grid Data Points: ' + (state.gridData.length ? state.gridData.length * state.gridData[0].length : 0)
+            ].join('\n');
+            
+            alert(diag);
+        }
+
+        // --- Constants & Config ---
+        const MARGIN = 40;
+        const DEFAULT_PALETTE_SIZE = 4;
         const state = {
-            image: null,
-            gridData: [], // 2D array of {r,g,b,a} or hex strings
+            imageUrl: null, // Using object URL instead of Image object to save memory
+            imageObj: null,
+            gridData: [], 
             cols: 50,
             rows: 50,
-            maxColors: 2, // Default 2
+            maxColors: DEFAULT_PALETTE_SIZE,
             cellSize: 15,
             isDrawing: false,
-            currentTool: 'pencil', // 'pencil' or 'eraser'
+            currentTool: 'pencil',
             currentColor: '#ef4444',
             showGrid: true,
-            showSections: false, // 100x100 markers
+            showSections: false,
             aspectRatio: 1,
             lockRatio: true,
-            contrast: 0, // -50 to 100
-            density: 55 // stitches per 10cm
+            contrast: 0,
+            density: 55
         };
 
-        // DOM Elements
+        // --- DOM Elements ---
+        const $ = id => document.getElementById(id);
         const els = {
-            fileInput: document.getElementById('fileInput'),
-            previewContainer: document.getElementById('imagePreviewContainer'),
-            sourcePreview: document.getElementById('sourcePreview'),
-            widthNum: document.getElementById('widthNum'),
-            heightNum: document.getElementById('heightNum'),
-            unlockRatio: document.getElementById('unlockRatio'),
-            contrastInput: document.getElementById('contrastNum'),
-            colorCountInput: document.getElementById('colorCountNum'),
-            densityInput: document.getElementById('densityNum'),
-            paletteDisplay: document.getElementById('paletteDisplay'),
-            processBtn: document.getElementById('processBtn'),
-            sizeWarning: document.getElementById('sizeWarning'),
-            exportBtn: document.getElementById('exportBtn'),
-            exportSectionsBtn: document.getElementById('exportSectionsBtn'),
-            canvas: document.getElementById('patternCanvas'),
-            processCanvas: document.getElementById('processCanvas'),
-            colorPicker: document.getElementById('colorPicker'),
-            activeColorDisplay: document.getElementById('activeColorDisplay'),
-            colorHex: document.getElementById('colorHex'),
-            toolPencil: document.getElementById('toolPencil'),
-            toolEraser: document.getElementById('toolEraser'),
-            batchReplaceBtn: document.getElementById('batchReplaceBtn'),
-            emptyState: document.getElementById('emptyState'),
-            coordinates: document.getElementById('coordinates'),
-            showGridLines: document.getElementById('showGridLines'),
-            showSections: document.getElementById('showSections'),
-            statusText: document.getElementById('statusText'),
+            fileInput: $('fileInput'),
+            sourcePreview: $('sourcePreview'),
+            widthNum: $('widthNum'),
+            heightNum: $('heightNum'),
+            unlockRatio: $('unlockRatio'),
+            contrastInput: $('contrastNum'),
+            colorCountInput: $('colorCountNum'),
+            densityInput: $('densityNum'),
+            paletteDisplay: $('paletteDisplay'),
+            processBtn: $('processBtn'),
+            exportBtn: $('exportBtn'),
+            exportSectionsBtn: $('exportSectionsBtn'),
+            canvas: $('patternCanvas'),
+            processCanvas: $('processCanvas'),
+            colorPicker: $('colorPicker'),
+            activeColorDisplay: $('activeColorDisplay'),
+            colorHex: $('colorHex'),
+            toolPencil: $('toolPencil'),
+            toolEraser: $('toolEraser'),
+            batchReplaceBtn: $('batchReplaceBtn'),
+            emptyState: $('emptyState'),
+            coordinates: $('coordinates'),
+            showGridLines: $('showGridLines'),
+            showSections: $('showSections'),
+            statusText: $('statusText'),
+            debugBtn: $('debugBtn'),
         };
 
-        const ctx = els.canvas.getContext('2d', { alpha: false }); // Optimize
+        const ctx = els.canvas.getContext('2d', { alpha: false });
         const pCtx = els.processCanvas.getContext('2d', { willReadFrequently: true });
 
         // --- Initialization ---
-        
         function init() {
-            // Setup Event Listeners
-            els.fileInput.addEventListener('change', handleFileUpload);
-            
-            // Width Controls
-            els.widthNum.addEventListener('input', (e) => updateWidth(e.target.value));
-            
-            // Height Controls
-            els.heightNum.addEventListener('input', (e) => {
-                state.rows = parseInt(e.target.value) || 10;
-            });
+            // Debug button
+            els.debugBtn.addEventListener('click', showDiagnostics);
 
+            // File Upload - Memory safe approach
+            els.fileInput.addEventListener('change', (e) => {
+                try {
+                    const file = e.target.files[0];
+                    if (!file) return;
+
+                    // Cleanup previous object URL to prevent memory leak
+                    if (state.imageUrl) URL.revokeObjectURL(state.imageUrl);
+
+                    state.imageUrl = URL.createObjectURL(file);
+                    
+                    const img = new Image();
+                    img.onload = () => {
+                        state.imageObj = img;
+                        state.aspectRatio = img.width / img.height;
+                        
+                        els.sourcePreview.src = state.imageUrl;
+                        els.sourcePreview.classList.remove('hidden');
+                        els.processBtn.disabled = false;
+                        els.emptyState.style.display = 'none';
+
+                        if (state.lockRatio) calculateRows();
+                        
+                        // Auto generate on load
+                        els.statusText.textContent = "Processing image...";
+                        requestAnimationFrame(generateGrid);
+                    };
+                    img.onerror = () => {
+                        alert("Error loading image. The file may be corrupt or too large.");
+                    };
+                    img.src = state.imageUrl;
+                } catch(err) {
+                    console.error(err);
+                    alert("Critical error during upload: " + err.message);
+                }
+            });
+            
+            // Inputs
+            els.widthNum.addEventListener('input', (e) => updateWidth(e.target.value));
+            els.heightNum.addEventListener('input', (e) => state.rows = parseInt(e.target.value) || 10);
             els.unlockRatio.addEventListener('change', (e) => {
                 state.lockRatio = !e.target.checked;
                 els.heightNum.disabled = state.lockRatio;
-                if(state.lockRatio && state.image) calculateRows();
+                if(state.lockRatio && state.imageObj) calculateRows();
             });
 
-            // Contrast
-            els.contrastInput.addEventListener('input', (e) => {
-                state.contrast = parseInt(e.target.value) || 0;
-            });
-
-            // Density
+            els.contrastInput.addEventListener('input', (e) => state.contrast = parseInt(e.target.value) || 0);
             els.densityInput.addEventListener('input', (e) => {
                 state.density = parseInt(e.target.value) || 55;
-                if(state.gridData.length) render(); // Re-render to update axis
+                if(state.gridData.length) render();
             });
-
-            // Color Count
             els.colorCountInput.addEventListener('input', (e) => {
                 let val = parseInt(e.target.value);
                 if (val < 2) val = 2;
-                if (val > 256) val = 256; 
+                if (val > 64) val = 64; 
                 state.maxColors = val;
             });
 
             els.processBtn.addEventListener('click', () => {
-                // Defer to allow UI update
                 els.statusText.textContent = "Processing...";
-                requestAnimationFrame(generateGrid);
+                // Small delay to allow UI to update
+                setTimeout(generateGrid, 50);
             });
             
-            // Color Tools
+            // Tools
             els.colorPicker.addEventListener('input', (e) => updateCurrentColor(e.target.value));
-            
             els.batchReplaceBtn.addEventListener('click', batchReplaceColor);
-
             els.toolPencil.addEventListener('click', () => setTool('pencil'));
             els.toolEraser.addEventListener('click', () => setTool('eraser'));
             
-            els.showGridLines.addEventListener('change', (e) => {
-                state.showGrid = e.target.checked;
-                render();
-            });
-
-            els.showSections.addEventListener('change', (e) => {
-                state.showSections = e.target.checked;
-                render();
-            });
+            els.showGridLines.addEventListener('change', (e) => { state.showGrid = e.target.checked; render(); });
+            els.showSections.addEventListener('change', (e) => { state.showSections = e.target.checked; render(); });
 
             els.exportBtn.addEventListener('click', exportImage);
             els.exportSectionsBtn.addEventListener('click', exportSections);
 
-            // Canvas Interaction
+            // Canvas Drawing
             els.canvas.addEventListener('mousedown', startDrawing);
             els.canvas.addEventListener('mousemove', draw);
-            els.canvas.addEventListener('mouseup', stopDrawing);
-            els.canvas.addEventListener('mouseleave', stopDrawing);
-            
-            // Init disable
-            els.processBtn.disabled = true;
-            els.exportBtn.disabled = true;
-            els.exportSectionsBtn.disabled = true;
+            window.addEventListener('mouseup', stopDrawing);
         }
-
-        // --- Logic ---
 
         function updateWidth(val) {
             let v = parseInt(val);
             if (v > 5000) v = 5000;
-            if (v < 1) v = 1; // Min 1
-            
+            if (v < 1) v = 1;
             state.cols = v;
             els.widthNum.value = v;
-            
-            if (v > 500) {
-                els.sizeWarning.classList.remove('hidden');
-            } else {
-                els.sizeWarning.classList.add('hidden');
-            }
-
             if (state.lockRatio) calculateRows();
         }
 
-        function handleFileUpload(e) {
-            const file = e.target.files[0];
-            if (!file) return;
-
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const img = new Image();
-                img.onload = () => {
-                    state.image = img;
-                    state.aspectRatio = img.width / img.height;
-                    
-                    els.sourcePreview.src = img.src;
-                    els.previewContainer.classList.remove('hidden');
-                    els.processBtn.disabled = false;
-                    els.emptyState.style.display = 'none';
-
-                    if (state.lockRatio) calculateRows();
-                    
-                    // First run
-                    generateGrid();
-                };
-                img.src = event.target.result;
-            };
-            reader.readAsDataURL(file);
-        }
-
         function calculateRows() {
-            if (!state.image) return;
+            if (!state.imageObj) return;
             state.rows = Math.round(state.cols / state.aspectRatio);
             els.heightNum.value = state.rows;
         }
 
         function generateGrid() {
-            if (!state.image) return;
+            try {
+                if (!state.imageObj) return;
 
-            // Safety cap for extremely large requests
-            const maxPixels = 25000000; // 5000x5000
-            if (state.cols * state.rows > maxPixels) {
-                alert("Grid is too large to render in browser memory. Please reduce dimensions.");
-                els.statusText.textContent = "Error: Too large";
-                return;
-            }
-
-            // Adjust cell size for viewing
-            const maxCanvasDim = 30000;
-            const neededWidth = state.cols * 15;
-            const neededHeight = state.rows * 15;
-            
-            if (neededWidth > maxCanvasDim || neededHeight > maxCanvasDim) {
-                const scaleX = maxCanvasDim / state.cols;
-                const scaleY = maxCanvasDim / state.rows;
-                state.cellSize = Math.floor(Math.min(scaleX, scaleY));
-                if (state.cellSize < 1) state.cellSize = 1;
-            } else {
-                state.cellSize = 15; // default
-            }
-
-            // 1. Resize & Contrast
-            els.processCanvas.width = state.cols;
-            els.processCanvas.height = state.rows;
-            
-            pCtx.clearRect(0, 0, state.cols, state.rows);
-            
-            // Apply Contrast Filter
-            if (state.contrast !== 0) {
-                const contrastPerc = 100 + state.contrast; 
-                pCtx.filter = `contrast(${contrastPerc}%)`;
-            } else {
-                pCtx.filter = 'none';
-            }
-            
-            pCtx.drawImage(state.image, 0, 0, state.cols, state.rows);
-            pCtx.filter = 'none'; // reset
-
-            // 2. Read pixel data
-            let imageData = pCtx.getImageData(0, 0, state.cols, state.rows);
-            
-            // 3. Quantize
-            const quantizedData = quantizeColors(imageData.data, state.maxColors);
-            
-            // 4. Populate
-            state.gridData = [];
-            const paletteSet = new Set();
-
-            let ptr = 0;
-            
-            for (let y = 0; y < state.rows; y++) {
-                const row = new Array(state.cols);
-                for (let x = 0; x < state.cols; x++) {
-                    const r = quantizedData[ptr];
-                    const g = quantizedData[ptr+1];
-                    const b = quantizedData[ptr+2];
-                    const a = quantizedData[ptr+3];
-                    ptr += 4;
-
-                    if (a < 50) {
-                        row[x] = null;
-                    } else {
-                        const hex = rgbToHex(r, g, b);
-                        row[x] = hex;
-                        paletteSet.add(hex);
-                    }
+                const maxPixels = 25000000; // Cap at 25MP
+                if (state.cols * state.rows > maxPixels) {
+                    alert("Grid is too large (over 25MP). Please reduce dimensions to prevent crash.");
+                    els.statusText.textContent = "Error: Too large";
+                    return;
                 }
-                state.gridData.push(row);
-            }
 
-            updatePaletteDisplay(Array.from(paletteSet));
-            resizeCanvas();
-            render();
-            els.exportBtn.disabled = false;
-            els.exportSectionsBtn.disabled = false;
-            els.statusText.textContent = `Generated ${state.cols}x${state.rows}`;
+                // Calculate cell size
+                const maxCanvasDim = 30000; // Browser safety limit
+                const neededWidth = state.cols * 15;
+                const neededHeight = state.rows * 15;
+                
+                state.cellSize = 15;
+                if (neededWidth > maxCanvasDim || neededHeight > maxCanvasDim) {
+                    const scale = maxCanvasDim / Math.max(state.cols, state.rows);
+                    state.cellSize = Math.floor(scale);
+                    if (state.cellSize < 1) state.cellSize = 1;
+                }
+
+                // Resize and Read Pixel Data
+                els.processCanvas.width = state.cols;
+                els.processCanvas.height = state.rows;
+                
+                // Clear and filter
+                pCtx.clearRect(0, 0, state.cols, state.rows);
+                if (state.contrast !== 0) {
+                    pCtx.filter = `contrast(${100 + state.contrast}%)`;
+                } else {
+                    pCtx.filter = 'none';
+                }
+                
+                // Draw image resized to grid dimensions
+                pCtx.drawImage(state.imageObj, 0, 0, state.cols, state.rows);
+                pCtx.filter = 'none';
+
+                const imageData = pCtx.getImageData(0, 0, state.cols, state.rows);
+                const quantizedData = quantizeColors(imageData.data, state.maxColors);
+                
+                // Transform to grid structure
+                state.gridData = [];
+                const paletteSet = new Set();
+                let ptr = 0;
+                
+                for (let y = 0; y < state.rows; y++) {
+                    const row = new Array(state.cols);
+                    for (let x = 0; x < state.cols; x++) {
+                        const r = quantizedData[ptr];
+                        const g = quantizedData[ptr+1];
+                        const b = quantizedData[ptr+2];
+                        const a = quantizedData[ptr+3];
+                        ptr += 4;
+
+                        if (a < 50) {
+                            row[x] = null;
+                        } else {
+                            const hex = rgbToHex(r, g, b);
+                            row[x] = hex;
+                            paletteSet.add(hex);
+                        }
+                    }
+                    state.gridData.push(row);
+                }
+
+                updatePaletteDisplay(Array.from(paletteSet));
+                resizeCanvas();
+                render();
+                
+                els.exportBtn.disabled = false;
+                els.exportSectionsBtn.disabled = false;
+                els.statusText.textContent = `Generated ${state.cols}x${state.rows}`;
+            } catch (e) {
+                console.error(e);
+                alert("Error generating grid: " + e.message + "\nTry reducing the column count.");
+                els.statusText.textContent = "Error";
+            }
         }
 
+        // --- Color Logic ---
+
         function quantizeColors(data, k) {
-            const sampleRate = data.length > 400000 ? 10 : 1; 
+            // Simple optimization: if image is huge, sample less pixels for K-means training
+            const step = data.length > 400000 ? 20 : 1; 
             
             const pixels = [];
-            for (let i = 0; i < data.length; i += 4 * sampleRate) {
+            for (let i = 0; i < data.length; i += 4 * step) {
                 if (data[i + 3] > 127) {
                     pixels.push({ r: data[i], g: data[i + 1], b: data[i + 2] });
                 }
@@ -483,14 +677,14 @@
 
             if (pixels.length === 0) return data;
 
-            // K-Means
+            // Initialize centroids randomly
             let centroids = [];
             for (let i = 0; i < k; i++) {
                 const p = pixels[Math.floor(Math.random() * pixels.length)];
-                if(p) centroids.push({ ...p });
-                else centroids.push({r:128,g:128,b:128});
+                centroids.push(p ? { ...p } : {r:128,g:128,b:128});
             }
 
+            // K-Means Iterations
             for (let iter = 0; iter < 5; iter++) {
                 const clusters = centroids.map(() => ({ r: 0, g: 0, b: 0, count: 0 }));
                 
@@ -517,6 +711,7 @@
                 });
             }
 
+            // Map all pixels to nearest centroid
             const result = new Uint8ClampedArray(data.length);
             for(let i=0; i<data.length; i+=4) {
                 if (data[i+3] < 127) {
@@ -547,9 +742,9 @@
             colors.sort();
             colors.forEach(color => {
                 const swatch = document.createElement('div');
-                swatch.className = 'w-6 h-6 rounded border border-slate-200 cursor-pointer shadow-sm hover:scale-110 transition-transform ring-offset-1 hover:ring-2 hover:ring-indigo-400';
+                swatch.className = 'swatch';
                 swatch.style.backgroundColor = color;
-                swatch.title = "Select " + color;
+                swatch.title = "Use " + color;
                 swatch.onclick = () => {
                     updateCurrentColor(color);
                     setTool('pencil');
@@ -568,12 +763,17 @@
         function batchReplaceColor() {
             if (!state.gridData.length) return;
             const targetHex = state.currentColor;
+            
+            // Create a temp color input just for this action
             const tempInput = document.createElement('input');
             tempInput.type = 'color';
             tempInput.value = targetHex;
-            tempInput.onchange = (e) => {
+            
+            // Listen for selection
+            tempInput.oninput = (e) => {
                 const newHex = e.target.value;
                 if (newHex === targetHex) return;
+                
                 let count = 0;
                 for(let y=0; y<state.rows; y++) {
                     for(let x=0; x<state.cols; x++) {
@@ -584,6 +784,7 @@
                     }
                 }
                 updateCurrentColor(newHex);
+                // Rebuild palette
                 const newPalette = new Set();
                 state.gridData.flat().forEach(c => { if(c) newPalette.add(c) });
                 updatePaletteDisplay(Array.from(newPalette));
@@ -593,27 +794,27 @@
             tempInput.click();
         }
 
+        // --- Rendering ---
+
         function resizeCanvas() {
-            // Add margins to width and height
-            els.canvas.width = (state.cols * state.cellSize) + MARGIN_LEFT + MARGIN_RIGHT;
-            els.canvas.height = (state.rows * state.cellSize) + MARGIN_TOP + MARGIN_BOTTOM;
+            els.canvas.width = (state.cols * state.cellSize) + MARGIN + MARGIN;
+            els.canvas.height = (state.rows * state.cellSize) + MARGIN + MARGIN;
         }
 
         function render() {
-            // Fill background white
+            // White Background
             ctx.fillStyle = "#ffffff";
             ctx.fillRect(0, 0, els.canvas.width, els.canvas.height);
 
-            // Draw Margins areas
-            ctx.fillStyle = "#f8fafc";
-            ctx.fillRect(0, 0, MARGIN_LEFT, els.canvas.height); // Left
-            ctx.fillRect(0, 0, els.canvas.width, MARGIN_TOP); // Top
-            ctx.fillRect(els.canvas.width - MARGIN_RIGHT, 0, MARGIN_RIGHT, els.canvas.height); // Right
-            ctx.fillRect(0, els.canvas.height - MARGIN_BOTTOM, els.canvas.width, MARGIN_BOTTOM); // Bottom
+            // Margin areas
+            ctx.fillStyle = "#f1f5f9";
+            ctx.fillRect(0, 0, MARGIN, els.canvas.height); // Left
+            ctx.fillRect(0, 0, els.canvas.width, MARGIN); // Top
+            ctx.fillRect(els.canvas.width - MARGIN, 0, MARGIN, els.canvas.height); // Right
+            ctx.fillRect(0, els.canvas.height - MARGIN, els.canvas.width, MARGIN); // Bottom
 
-            // Offset context for grid drawing
             ctx.save();
-            ctx.translate(MARGIN_LEFT, MARGIN_TOP);
+            ctx.translate(MARGIN, MARGIN);
 
             // Draw Cells
             for (let y = 0; y < state.rows; y++) {
@@ -644,100 +845,69 @@
                 }
                 ctx.stroke();
 
-                // Major Lines (Every 5)
+                // Major Lines (Every 5 or 10)
+                const majorStep = 10;
                 ctx.beginPath();
                 ctx.lineWidth = 1.5;
                 ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-                for (let x = 0; x <= state.cols; x += 5) {
+                for (let x = 0; x <= state.cols; x += majorStep) {
                     ctx.moveTo(x * state.cellSize, 0);
                     ctx.lineTo(x * state.cellSize, state.rows * state.cellSize);
                 }
-                for (let y = 0; y <= state.rows; y += 5) {
+                for (let y = 0; y <= state.rows; y += majorStep) {
                     ctx.moveTo(0, y * state.cellSize);
                     ctx.lineTo(state.cols * state.cellSize, y * state.cellSize);
                 }
                 ctx.stroke();
-
-                // Section Lines (Every 100) - If enabled
-                if (state.showSections) {
-                    ctx.beginPath();
-                    ctx.lineWidth = 3;
-                    ctx.strokeStyle = '#ef4444'; // Red
-                    for (let x = 0; x <= state.cols; x += 100) {
-                        ctx.moveTo(x * state.cellSize, 0);
-                        ctx.lineTo(x * state.cellSize, state.rows * state.cellSize);
-                    }
-                    for (let y = 0; y <= state.rows; y += 100) {
-                        ctx.moveTo(0, y * state.cellSize);
-                        ctx.lineTo(state.cols * state.cellSize, y * state.cellSize);
-                    }
-                    ctx.stroke();
-                }
             }
 
-            ctx.restore(); // Undo translation
+            // Section Lines (100x100)
+            if (state.showSections) {
+                ctx.beginPath();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = '#ef4444';
+                for (let x = 0; x <= state.cols; x += 100) {
+                    ctx.moveTo(x * state.cellSize, 0);
+                    ctx.lineTo(x * state.cellSize, state.rows * state.cellSize);
+                }
+                for (let y = 0; y <= state.rows; y += 100) {
+                    ctx.moveTo(0, y * state.cellSize);
+                    ctx.lineTo(state.cols * state.cellSize, y * state.cellSize);
+                }
+                ctx.stroke();
+            }
 
-            // --- DRAW AXES ---
-            
+            ctx.restore();
+
+            // --- AXES ---
             ctx.fillStyle = "#475569";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.font = "10px sans-serif";
 
-            // 1. TOP AXIS (Column Numbers) - Every 5
-            for (let x = 5; x <= state.cols; x += 5) {
-                const xPos = MARGIN_LEFT + (x * state.cellSize);
-                ctx.fillText(x, xPos, MARGIN_TOP / 2);
-                
-                // Tick mark
-                ctx.beginPath();
-                ctx.moveTo(xPos, MARGIN_TOP - 5);
-                ctx.lineTo(xPos, MARGIN_TOP);
-                ctx.strokeStyle = "#94a3b8";
-                ctx.stroke();
+            // Top Axis (Cols)
+            for (let x = 10; x <= state.cols; x += 10) {
+                const xPos = MARGIN + (x * state.cellSize);
+                ctx.fillText(x, xPos, MARGIN / 2);
+                ctx.fillRect(xPos, MARGIN - 5, 1, 5);
             }
 
-            // 2. LEFT AXIS (Row Numbers) - Every 5
-            for (let y = 5; y <= state.rows; y += 5) {
-                const yPos = MARGIN_TOP + (y * state.cellSize);
-                ctx.fillText(y, MARGIN_LEFT / 2, yPos);
-
-                // Tick mark
-                ctx.beginPath();
-                ctx.moveTo(MARGIN_LEFT - 5, yPos);
-                ctx.lineTo(MARGIN_LEFT, yPos);
-                ctx.strokeStyle = "#94a3b8";
-                ctx.stroke();
+            // Left Axis (Rows)
+            for (let y = 10; y <= state.rows; y += 10) {
+                const yPos = MARGIN + (y * state.cellSize);
+                ctx.fillText(y, MARGIN / 2, yPos);
+                ctx.fillRect(MARGIN - 5, yPos, 5, 1);
             }
 
-            // 3. BOTTOM & RIGHT AXIS (Physical Dimensions)
+            // Bottom Axis (CM)
             const stitchesPerCm = state.density / 10;
             const pixelsPerCm = state.cellSize * stitchesPerCm;
-            
-            // Width
             const widthCm = state.cols / stitchesPerCm;
+            
             for (let cm = 5; cm <= widthCm; cm += 5) {
-                const xPos = MARGIN_LEFT + (cm * pixelsPerCm);
-                ctx.fillText(cm + "cm", xPos, els.canvas.height - (MARGIN_BOTTOM / 2));
-                
-                ctx.beginPath();
-                ctx.moveTo(xPos, els.canvas.height - MARGIN_BOTTOM);
-                ctx.lineTo(xPos, els.canvas.height - MARGIN_BOTTOM + 5);
-                ctx.strokeStyle = "#64748b";
-                ctx.stroke();
-            }
-
-            // Height
-            const heightCm = state.rows / stitchesPerCm;
-            for (let cm = 5; cm <= heightCm; cm += 5) {
-                const yPos = MARGIN_TOP + (cm * pixelsPerCm);
-                ctx.fillText(cm + "cm", els.canvas.width - (MARGIN_RIGHT / 2), yPos);
-
-                ctx.beginPath();
-                ctx.moveTo(els.canvas.width - MARGIN_RIGHT, yPos);
-                ctx.lineTo(els.canvas.width - MARGIN_RIGHT + 5, yPos);
-                ctx.strokeStyle = "#64748b";
-                ctx.stroke();
+                const xPos = MARGIN + (cm * pixelsPerCm);
+                ctx.fillText(cm + "cm", xPos, els.canvas.height - (MARGIN / 2));
+                ctx.fillRect(xPos, els.canvas.height - MARGIN, 1, 5);
             }
         }
 
@@ -745,13 +915,12 @@
 
         function setTool(tool) {
             state.currentTool = tool;
-            
-            if (tool === 'pencil') {
-                els.toolPencil.className = "flex-1 py-2 px-3 rounded bg-indigo-100 text-indigo-700 border border-indigo-200 flex justify-center items-center gap-2 text-sm font-medium transition-colors";
-                els.toolEraser.className = "flex-1 py-2 px-3 rounded bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 flex justify-center items-center gap-2 text-sm font-medium transition-colors";
+            if(tool === 'pencil') {
+                els.toolPencil.classList.add('active');
+                els.toolEraser.classList.remove('active');
             } else {
-                els.toolEraser.className = "flex-1 py-2 px-3 rounded bg-indigo-100 text-indigo-700 border border-indigo-200 flex justify-center items-center gap-2 text-sm font-medium transition-colors";
-                els.toolPencil.className = "flex-1 py-2 px-3 rounded bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 flex justify-center items-center gap-2 text-sm font-medium transition-colors";
+                els.toolEraser.classList.add('active');
+                els.toolPencil.classList.remove('active');
             }
         }
 
@@ -760,9 +929,8 @@
             const x = e.clientX - rect.left;
             const y = e.clientY - rect.top;
             
-            // Adjust for margins
-            const gridX = x - MARGIN_LEFT;
-            const gridY = y - MARGIN_TOP;
+            const gridX = x - MARGIN;
+            const gridY = y - MARGIN;
             
             const col = Math.floor(gridX / state.cellSize);
             const row = Math.floor(gridY / state.cellSize);
@@ -783,10 +951,7 @@
             if (col >= 0 && col < state.cols && row >= 0 && row < state.rows) {
                 els.coordinates.textContent = `${col + 1}, ${row + 1}`;
             }
-
-            if (state.isDrawing) {
-                paint(e);
-            }
+            if (state.isDrawing) paint(e);
         }
 
         function paint(e) {
@@ -797,24 +962,22 @@
             if (state.currentTool === 'pencil') {
                 if (state.gridData[row][col] !== state.currentColor) {
                     state.gridData[row][col] = state.currentColor;
-                    // Draw with offset
-                    const drawX = MARGIN_LEFT + (col * state.cellSize);
-                    const drawY = MARGIN_TOP + (row * state.cellSize);
                     
+                    // Instant feedback draw
+                    const drawX = MARGIN + (col * state.cellSize);
+                    const drawY = MARGIN + (row * state.cellSize);
                     ctx.fillStyle = state.currentColor;
                     ctx.fillRect(drawX, drawY, state.cellSize, state.cellSize);
                     
                     if(state.showGrid && state.cellSize > 2) {
-                        ctx.lineWidth = 1;
-                        ctx.strokeStyle = 'rgba(0,0,0,0.1)';
                         ctx.strokeRect(drawX, drawY, state.cellSize, state.cellSize);
                     }
                 }
             } else if (state.currentTool === 'eraser') {
                 if (state.gridData[row][col] !== null) {
                     state.gridData[row][col] = null;
-                    const drawX = MARGIN_LEFT + (col * state.cellSize);
-                    const drawY = MARGIN_TOP + (row * state.cellSize);
+                    const drawX = MARGIN + (col * state.cellSize);
+                    const drawY = MARGIN + (row * state.cellSize);
                     ctx.fillStyle = "#ffffff";
                     ctx.fillRect(drawX, drawY, state.cellSize, state.cellSize);
                 }
@@ -830,56 +993,38 @@
             document.body.removeChild(link);
         }
 
-        // Logic to slice the grid into 100x100 images and open in a new window
         function exportSections() {
             if (!state.gridData.length) return;
-
             const sectionSize = 100;
             const win = window.open('', '_blank');
-            if(!win) { alert("Pop-up blocked. Please allow pop-ups to view sections."); return; }
+            if(!win) { alert("Pop-up blocked."); return; }
 
             win.document.write(`
-                <html>
-                <head>
-                    <title>StitchGrid - Sections</title>
-                    <style>
-                        body { font-family: sans-serif; padding: 20px; background: #f0f0f0; }
-                        .section { margin-bottom: 40px; background: white; padding: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-                        h3 { margin: 0 0 10px 0; color: #333; }
-                        img { max-width: 100%; border: 1px solid #ccc; image-rendering: pixelated; }
-                        @media print {
-                            body { background: white; }
-                            .section { break-inside: avoid; box-shadow: none; border-bottom: 1px dashed #ccc; }
-                        }
-                    </style>
-                </head>
-                <body>
-                    <h1>Pattern Sections (100x100)</h1>
-                    <p>Right click images to save, or use Ctrl+P to print.</p>
-            `);
+                <html><head><title>Pattern Sections</title>
+                <style>
+                    body{font-family:sans-serif;padding:20px;background:#f0f0f0}
+                    .section{margin-bottom:40px;background:white;padding:10px;box-shadow:0 2px 8px rgba(0,0,0,0.1)}
+                    img{max-width:100%;border:1px solid #ccc;image-rendering:pixelated}
+                    @media print{body{background:white}.section{break-inside:avoid;box-shadow:none}}
+                </style></head><body><h1>Pattern Sections</h1>`);
 
-            // Iterate 100x100 chunks
             for (let y = 0; y < state.rows; y += sectionSize) {
                 for (let x = 0; x < state.cols; x += sectionSize) {
                     const w = Math.min(sectionSize, state.cols - x);
                     const h = Math.min(sectionSize, state.rows - y);
 
-                    // Create temp canvas for this section
                     const tCanvas = document.createElement('canvas');
-                    // Add some margin for labels
                     const pad = 20; 
-                    const cellSize = Math.max(10, state.cellSize); // Ensure readable size in export
-                    
+                    const cellSize = Math.max(10, state.cellSize);
                     tCanvas.width = (w * cellSize) + pad*2;
                     tCanvas.height = (h * cellSize) + pad*2;
                     const tCtx = tCanvas.getContext('2d');
 
                     tCtx.fillStyle = "white";
                     tCtx.fillRect(0, 0, tCanvas.width, tCanvas.height);
-                    
                     tCtx.translate(pad, pad);
                     
-                    // Draw Grid in chunk
+                    // Draw Section
                     for(let sy = 0; sy < h; sy++) {
                         for(let sx = 0; sx < w; sx++) {
                              const color = state.gridData[y + sy][x + sx];
@@ -887,35 +1032,25 @@
                                  tCtx.fillStyle = color;
                                  tCtx.fillRect(sx*cellSize, sy*cellSize, cellSize, cellSize);
                              }
-                             // Grid lines
-                             tCtx.strokeStyle = "#ccc";
+                             tCtx.strokeStyle = "#ddd";
                              tCtx.lineWidth = 1;
                              tCtx.strokeRect(sx*cellSize, sy*cellSize, cellSize, cellSize);
                         }
                     }
 
-                    // Labels
                     tCtx.fillStyle = "black";
-                    tCtx.font = "12px sans-serif";
+                    tCtx.font = "14px sans-serif";
                     tCtx.fillText(`Cols: ${x+1}-${x+w}`, 0, -5);
                     tCtx.fillText(`Rows: ${y+1}-${y+h}`, -5, 0);
 
-                    win.document.write(`
-                        <div class="section">
-                            <h3>Section: Cols ${x+1}-${x+w}, Rows ${y+1}-${y+h}</h3>
-                            <img src="${tCanvas.toDataURL()}">
-                        </div>
-                    `);
+                    win.document.write(`<div class="section"><h3>Cols ${x+1}-${x+w}, Rows ${y+1}-${y+h}</h3><img src="${tCanvas.toDataURL()}"></div>`);
                 }
             }
-
             win.document.write('</body></html>');
             win.document.close();
         }
 
-        // Run
         init();
-
     </script>
 </body>
 </html>
