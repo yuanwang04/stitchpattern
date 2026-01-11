@@ -61,7 +61,7 @@ const state = {
     cellSize: 15,
     isDrawing: false,
     currentTool: 'pencil',
-    currentColor: '#ef4444',
+    currentColor: '#ffffff',
     showGrid: true,
     showSections: false,
     aspectRatio: 1,
@@ -457,6 +457,12 @@ function resizeCanvas() {
 }
 
 function render() {
+    // Indexes are counted from the bottom-right corner to the top-left.
+    // With horizontal index followed by vertical index. Example below:
+    // (1,1) | (0,1)
+    // -------------
+    // (1,0) | (0,0)
+
     // White Background
     ctx.fillStyle = "#ffffff";
     ctx.fillRect(0, 0, els.canvas.width, els.canvas.height);
@@ -548,7 +554,7 @@ function render() {
     ctx.fillStyle = "#475569";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.font = "10px sans-serif";
+    ctx.font = "12px sans-serif";
 
     // Top Axis (Cols)
     for (let i = 10; i <= state.cols; i += 10) {
@@ -558,6 +564,62 @@ function render() {
         ctx.fillRect(xPos, MARGIN - 5, 1, 5);
     }
 
+    // Bottom Axis (Cols) - Upper
+    for (let i = 10; i <= state.cols; i += 10) {
+        const x = state.cols - i;
+        const xPos = MARGIN + (x * state.cellSize);
+        ctx.fillText(i, xPos, els.canvas.height - 30);
+        ctx.fillRect(xPos, els.canvas.height - MARGIN, 1, 5);
+    }
+
+    // Bottom Axis (Real Size in cm) - Lower
+    const stitchesPerCm = state.density / 10;
+    if (stitchesPerCm > 0) {
+        const widthCm = state.cols / stitchesPerCm;
+        let cmStep = 1;
+        if (widthCm > 20) cmStep = 5;
+        if (widthCm > 100) cmStep = 10;
+
+        const axisY = els.canvas.height - 15; // Y position for the horizontal line and text
+        const startX = MARGIN + state.cols * state.cellSize; // Right side of grid
+        const endX = MARGIN; // Left side of grid
+
+        // Draw the horizontal axis line
+        ctx.beginPath();
+        ctx.moveTo(startX, axisY);
+        ctx.lineTo(endX, axisY);
+        ctx.strokeStyle = "#9ca3af"; // Lighter color for the axis line
+        ctx.lineWidth = 1;
+        ctx.stroke();
+
+        // Draw ticks and labels
+        for (let cm = 0; cm <= widthCm; cm += cmStep) {
+            if (cm === 0 && cmStep > 1) continue; // Skip 0 if step is large
+            const stitchesFromRight = cm * stitchesPerCm;
+            const gridX = state.cols - stitchesFromRight;
+            
+            if (gridX >= 0) {
+                const xPos = MARGIN + gridX * state.cellSize;
+
+                // Draw the vertical tick
+                ctx.beginPath();
+                ctx.moveTo(xPos, axisY - 3);
+                ctx.lineTo(xPos, axisY + 3);
+                ctx.strokeStyle = "#475569";
+                ctx.lineWidth = 1;
+                ctx.stroke();
+                
+                // Draw the label
+                if (cm > 0) {
+                    ctx.fillText(cm, xPos, axisY - 7);
+                }
+            }
+        }
+        ctx.textAlign="left";
+        ctx.fillText("cm", endX - 15, axisY);
+        ctx.textAlign="center";
+    }
+
     // Left Axis (Rows)
     for (let i = 10; i <= state.rows; i += 10) {
         const y = state.rows - i;
@@ -565,10 +627,18 @@ function render() {
         ctx.fillText(i, MARGIN / 2, yPos);
         ctx.fillRect(MARGIN - 5, yPos, 5, 1);
     }
+
+    // Right Axis (Rows)
+    for (let i = 10; i <= state.rows; i += 10) {
+        const y = state.rows - i;
+        const yPos = MARGIN + (y * state.cellSize);
+        ctx.fillText(i, els.canvas.width - (MARGIN / 2), yPos);
+        ctx.fillRect(els.canvas.width - MARGIN, yPos, 5, 1);
+    }
     
     // In-grid 10x10 labels
     ctx.fillStyle = 'rgba(0,0,0,0.7)';
-    ctx.font = 'bold 8px sans-serif';
+    ctx.font = 'bold 12px sans-serif';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'top';
     for (let newRow = 10; newRow <= state.rows; newRow += 10) {
@@ -582,17 +652,6 @@ function render() {
                 ctx.fillText(`${newCol},${newRow}`, xPos, yPos);
             }
         }
-    }
-
-    // Bottom Axis (CM)
-    const stitchesPerCm = state.density / 10;
-    const pixelsPerCm = state.cellSize * stitchesPerCm;
-    const widthCm = state.cols / stitchesPerCm;
-    
-    for (let cm = 5; cm <= widthCm; cm += 5) {
-        const xPos = MARGIN + (cm * pixelsPerCm);
-        ctx.fillText(cm + "cm", xPos, els.canvas.height - (MARGIN / 2));
-        ctx.fillRect(xPos, els.canvas.height - MARGIN, 1, 5);
     }
 }
 
